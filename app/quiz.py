@@ -18,7 +18,7 @@ def _generate_operands(op: str) -> tuple[int, int, int]:
     if op == "-":
         a = random.randint(1, 20)
         b = random.randint(1, a)  # non-negative result
-        return a, b, a - b
+        return a, b, a - b or 1
     if op == "*":
         a = random.randint(1, 12)
         b = random.randint(1, 12)
