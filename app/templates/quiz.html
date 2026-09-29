@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Math Quiz — Question {{ progress }}{% endblock %}
+{% block content %}
+<section class="quiz">
+  <div class="meta">
+    <span class="progress">Question {{ progress }} / {{ total }}</span>
+    <span id="timer" class="timer" data-remaining="{{ remaining_seconds }}">
+      {{ remaining_seconds }}s
+    </span>
+  </div>
+  <h1 class="prompt">{{ question.prompt }} = ?</h1>
+  <form id="answer-form" action="{{ url_for('quiz.answer') }}" method="post" class="answer-form">
+    <label for="answer" class="sr-only">Your answer</label>
+    <input
+      id="answer"
+      name="answer"
+      type="number"
+      inputmode="numeric"
+      autofocus
+      required
+      autocomplete="off"
+    >
+    <button type="submit" class="btn primary">Submit</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/timer.js') }}"></script>
+{% endblock %}
