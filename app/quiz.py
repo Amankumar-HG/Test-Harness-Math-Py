@@ -35,6 +35,7 @@ def generate_question(question_id: int, op: str | None = None) -> dict[str, Any]
     op = op if op in OPS else random.choice(OPS)
     a, b, correct = _generate_operands(op)
     symbol = {"+": "+", "-": "−", "*": "×", "/": "÷"}[op]
+    correct = a - b if op == "-" else correct
     return {
         "id": question_id,
         "op": op,

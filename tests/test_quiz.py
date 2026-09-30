@@ -23,6 +23,12 @@ class TestGenerateQuestion:
         assert q["correct"] == 7
         assert q["prompt"] == "10 − 3"
 
+    def test_subtraction_identical_numbers(self):
+        with patch("app.quiz.random.randint", side_effect=[8, 8]):
+            q = generate_question(3, op="-")
+        assert q["correct"] == 0
+        assert q["prompt"] == "8 − 8"
+
     def test_multiplication(self):
         with patch("app.quiz.random.randint", side_effect=[4, 6]):
             q = generate_question(3, op="*")
