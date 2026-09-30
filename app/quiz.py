@@ -63,4 +63,6 @@ def grade_answer(question: dict[str, Any], user_input: Any) -> bool:
         value = int(text)
     except (TypeError, ValueError):
         return False
+    if question["correct"] is None:
+        return False
     return value == int(question["correct"])
