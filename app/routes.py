@@ -29,7 +29,7 @@ def _remaining_seconds() -> int:
     if started is None:
         return 0
     elapsed = time.time() - float(started)
-    return max(0, int(limit - elapsed))
+    return max(0, int(limit - elapsed) - 1)
 
 
 def _time_expired() -> bool:
