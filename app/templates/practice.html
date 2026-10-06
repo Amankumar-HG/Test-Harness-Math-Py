@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Practice — {{ skill.name }}{% endblock %}
+{% block content %}
+<section class="practice">
+  <div class="meta-row">
+    <span>{{ skill.name }}</span>
+    <span>Difficulty {{ item.difficulty }} / 3</span>
+    <span>{{ progress }} / {{ total }}</span>
+    <span>{{ correct_so_far }} correct</span>
+  </div>
+
+  <h1 class="prompt">{{ item.prompt }}</h1>
+  <p class="hint">Hint: {{ item.hint }}</p>
+
+  <form action="{{ url_for('ape.practice_answer') }}" method="post" class="answer-form">
+    <label for="answer" class="sr-only">Your answer</label>
+    <input
+      id="answer"
+      name="answer"
+      type="text"
+      inputmode="{% if item.answer_type == 'fraction' %}text{% else %}numeric{% endif %}"
+      autocomplete="off"
+      autofocus
+      required
+      placeholder="{% if item.answer_type == 'fraction' %}e.g. 3/4{% else %}Your answer{% endif %}"
+    >
+    <button type="submit" class="btn primary">Submit</button>
+  </form>
+</section>
+{% endblock %}

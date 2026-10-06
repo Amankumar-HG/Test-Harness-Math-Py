@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Session summary{% endblock %}
+{% block content %}
+<section class="summary">
+  <h1>Session complete</h1>
+  <p class="score-line">
+    You got <strong>{{ correct }}</strong> of <strong>{{ answered }}</strong>
+    ({{ percent }}%).
+  </p>
+
+  <ul class="review">
+    {% for item in history %}
+    <li class="{{ 'correct' if item.is_correct else 'incorrect' }}">
+      <span class="q">{{ item.prompt }}</span>
+      <span class="a">
+        You: {{ item.user_answer or 'blank' }}
+        · Correct:
+        {% if item.answer_type == 'fraction' %}
+          {{ item.correct_answer[0] }}/{{ item.correct_answer[1] }}
+        {% else %}
+          {{ item.correct_answer }}
+        {% endif %}
+        · {{ skills[item.skill_id].name }}
+        · mastery now {{ '%.0f'|format(item.mastery_after) }}%
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <div class="actions">
+    <form action="{{ url_for('ape.start_practice') }}" method="post">
+      <button class="btn primary" type="submit">Practice again</button>
+    </form>
+    <a class="btn ghost" href="{{ url_for('ape.dashboard') }}">Back to dashboard</a>
+  </div>
+
+  <section class="skill-grid compact">
+    {% for card in cards %}
+    <article class="skill-card {% if not card.unlocked %}locked{% endif %}">
+      <h2>{{ card.skill.name }}</h2>
+      <div class="meter"><div class="meter-fill" style="width: {{ card.state.mastery }}%"></div></div>
+      <p>{{ '%.0f'|format(card.state.mastery) }}% · {{ card.label }}</p>
+    </article>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}

@@ -1,4 +1,4 @@
-"""HTTP routes for the Math Quiz web app."""
+"""HTTP routes for the Adaptive Problem Engine."""
 
 from __future__ import annotations
 
@@ -14,166 +14,211 @@ from flask import (
     url_for,
 )
 
-from app.quiz import build_quiz, grade_answer
+from app.engine.items import grade_item
+from app.engine.mastery import is_due, mastery_label, update_after_attempt
+from app.engine.selector import next_item
+from app.engine.skills import SKILLS, is_unlocked, skill_order
 
-bp = Blueprint("quiz", __name__)
-
-
-def _quiz_active() -> bool:
-    return "questions" in session and "current_index" in session
-
-
-def _remaining_seconds() -> int:
-    started = session.get("started_at")
-    limit = session.get("time_limit_sec", current_app.config["QUIZ_TIME_LIMIT"])
-    if started is None:
-        return 0
-    elapsed = time.time() - float(started)
-    return max(0, int(limit - elapsed) - 1)
+bp = Blueprint("ape", __name__)
 
 
-def _time_expired() -> bool:
-    return _quiz_active() and _remaining_seconds() <= 0
+def _store():
+    return current_app.extensions["store"]
 
 
-def _finalize_unanswered() -> None:
-    """Mark remaining questions as unanswered when time expires or quiz ends."""
-    questions = session.get("questions", [])
-    answers = list(session.get("answers", []))
-    index = session.get("current_index", 0)
-    while len(answers) < len(questions):
-        q = questions[len(answers)]
-        answers.append(
+def _learner_id() -> str:
+    store = _store()
+    learner_id = store.ensure_learner(session.get("learner_id"))
+    session["learner_id"] = learner_id
+    return learner_id
+
+
+def _skill_cards(states: dict) -> list[dict]:
+    mastery_map = {sid: float(states[sid]["mastery"]) for sid in SKILLS}
+    cards = []
+    for skill in skill_order():
+        state = states[skill.id]
+        unlocked = is_unlocked(skill.id, mastery_map)
+        cards.append(
             {
-                "question_id": q["id"],
-                "prompt": q["prompt"],
-                "correct": q["correct"],
-                "user_answer": None,
-                "is_correct": False,
+                "skill": skill,
+                "state": state,
+                "unlocked": unlocked,
+                "due": unlocked and is_due(state),
+                "label": mastery_label(float(state["mastery"])),
             }
         )
-    session["answers"] = answers
-    session["current_index"] = len(questions)
-    session["finished"] = True
+    return cards
 
 
 @bp.route("/")
-def home():
+def dashboard():
+    learner_id = _learner_id()
+    store = _store()
+    states = store.get_all_states(learner_id)
+    cards = _skill_cards(states)
+    recent = store.recent_attempts(learner_id, limit=8)
+    overall = round(
+        sum(float(states[s.id]["mastery"]) for s in skill_order()) / len(SKILLS), 1
+    )
     return render_template(
-        "home.html",
-        quiz_length=current_app.config["QUIZ_LENGTH"],
-        time_limit=current_app.config["QUIZ_TIME_LIMIT"],
+        "dashboard.html",
+        cards=cards,
+        recent=recent,
+        overall=overall,
+        session_length=current_app.config["SESSION_LENGTH"],
+        skills=SKILLS,
     )
 
 
-@bp.route("/quiz/start", methods=["POST"])
-def start_quiz():
-    length = current_app.config["QUIZ_LENGTH"]
-    time_limit = current_app.config["QUIZ_TIME_LIMIT"]
-    session.clear()
-    session["questions"] = build_quiz(length)
-    session["current_index"] = 0
-    session["answers"] = []
-    session["score"] = 0
-    session["started_at"] = time.time()
-    session["time_limit_sec"] = time_limit
-    session["finished"] = False
-    return redirect(url_for("quiz.play"))
+@bp.route("/practice/start", methods=["POST"])
+def start_practice():
+    learner_id = _learner_id()
+    store = _store()
+    states = store.get_all_states(learner_id)
+    forced = request.form.get("skill_id") or None
+    if forced and forced not in SKILLS:
+        forced = None
+    if forced:
+        mastery_map = {sid: float(states[sid]["mastery"]) for sid in SKILLS}
+        if not is_unlocked(forced, mastery_map):
+            forced = None
+
+    item = next_item(states, forced_skill=forced)
+    session["practice"] = {
+        "active": True,
+        "target": int(current_app.config["SESSION_LENGTH"]),
+        "answered": 0,
+        "correct": 0,
+        "recent_skills": [],
+        "current_item": item,
+        "history": [],
+        "forced_skill": forced,
+        "started_at": time.time(),
+    }
+    return redirect(url_for("ape.practice"))
 
 
-@bp.route("/quiz/play")
-def play():
-    if not _quiz_active():
-        return redirect(url_for("quiz.home"))
+@bp.route("/practice")
+def practice():
+    practice_state = session.get("practice") or {}
+    if not practice_state.get("active") or not practice_state.get("current_item"):
+        return redirect(url_for("ape.dashboard"))
 
-    if session.get("finished") or _time_expired():
-        if _time_expired() and not session.get("finished"):
-            _finalize_unanswered()
-        return redirect(url_for("quiz.results"))
-
-    questions = session["questions"]
-    index = session["current_index"]
-    if index >= len(questions):
-        session["finished"] = True
-        return redirect(url_for("quiz.results"))
-
-    question = questions[index]
+    item = practice_state["current_item"]
+    skill = SKILLS[item["skill_id"]]
     return render_template(
-        "quiz.html",
-        question=question,
-        progress=index + 1,
-        total=len(questions),
-        remaining_seconds=_remaining_seconds(),
+        "practice.html",
+        item=item,
+        skill=skill,
+        progress=practice_state["answered"] + 1,
+        total=practice_state["target"],
+        correct_so_far=practice_state["correct"],
     )
 
 
-@bp.route("/quiz/answer", methods=["POST"])
-def answer():
-    if not _quiz_active():
-        return redirect(url_for("quiz.home"))
+@bp.route("/practice/answer", methods=["POST"])
+def practice_answer():
+    practice_state = session.get("practice") or {}
+    if not practice_state.get("active") or not practice_state.get("current_item"):
+        return redirect(url_for("ape.dashboard"))
 
-    if session.get("finished"):
-        return redirect(url_for("quiz.results"))
-
-    if _time_expired():
-        _finalize_unanswered()
-        return redirect(url_for("quiz.results"))
-
-    questions = session["questions"]
-    index = session["current_index"]
-    if index >= len(questions):
-        session["finished"] = True
-        return redirect(url_for("quiz.results"))
-
-    question = questions[index]
+    item = practice_state["current_item"]
     user_raw = request.form.get("answer", "")
-    is_correct = grade_answer(question, user_raw)
+    correct = grade_item(item, user_raw)
+    now = time.time()
 
-    answers = list(session.get("answers", []))
-    answers.append(
+    learner_id = _learner_id()
+    store = _store()
+    states = store.get_all_states(learner_id)
+    skill_id = item["skill_id"]
+    updated = update_after_attempt(
+        states.get(skill_id, {}),
+        correct=correct,
+        difficulty=int(item["difficulty"]),
+        now=now,
+    )
+    store.save_skill_state(learner_id, skill_id, updated)
+    store.log_attempt(
+        learner_id,
+        skill_id=skill_id,
+        difficulty=int(item["difficulty"]),
+        correct=correct,
+        prompt=item["prompt"],
+        user_answer=user_raw.strip() if user_raw and str(user_raw).strip() else None,
+        created_at=now,
+    )
+
+    history = list(practice_state.get("history", []))
+    history.append(
         {
-            "question_id": question["id"],
-            "prompt": question["prompt"],
-            "correct": question["correct"],
-            "user_answer": user_raw.strip() if user_raw and str(user_raw).strip() else None,
-            "is_correct": is_correct,
+            "prompt": item["prompt"],
+            "correct_answer": item["correct"],
+            "answer_type": item.get("answer_type", "int"),
+            "user_answer": user_raw.strip() if user_raw else "",
+            "is_correct": correct,
+            "skill_id": skill_id,
+            "difficulty": item["difficulty"],
+            "mastery_after": updated["mastery"],
         }
     )
-    session["answers"] = answers
-    if is_correct:
-        session["score"] = int(session.get("score", 0)) + 1
-    session["current_index"] = index + 1
+    recent_skills = list(practice_state.get("recent_skills", []))
+    recent_skills.append(skill_id)
 
-    if session["current_index"] >= len(questions) or _time_expired():
-        if _time_expired():
-            _finalize_unanswered()
-        else:
-            session["finished"] = True
-        return redirect(url_for("quiz.results"))
+    practice_state["answered"] = int(practice_state.get("answered", 0)) + 1
+    practice_state["correct"] = int(practice_state.get("correct", 0)) + (1 if correct else 0)
+    practice_state["history"] = history
+    practice_state["recent_skills"] = recent_skills
+    practice_state["last_feedback"] = {
+        "is_correct": correct,
+        "correct_answer": item["correct"],
+        "answer_type": item.get("answer_type", "int"),
+    }
 
-    return redirect(url_for("quiz.play"))
+    if practice_state["answered"] >= int(practice_state["target"]):
+        practice_state["active"] = False
+        practice_state["current_item"] = None
+        session["practice"] = practice_state
+        return redirect(url_for("ape.summary"))
 
-
-@bp.route("/quiz/results")
-def results():
-    if not _quiz_active() and not session.get("finished"):
-        # Allow results if we have answers from a finished quiz
-        if "answers" not in session:
-            return redirect(url_for("quiz.home"))
-
-    if _quiz_active() and _time_expired() and not session.get("finished"):
-        _finalize_unanswered()
-
-    questions = session.get("questions", [])
-    answers = session.get("answers", [])
-    score = int(session.get("score", 0))
-    total = len(questions) or len(answers)
-    percent = round((score / total) * 100) if total else 0
-
-    return render_template(
-        "results.html",
-        score=score,
-        total=total,
-        percent=percent,
-        answers=answers,
+    states[skill_id] = updated
+    practice_state["current_item"] = next_item(
+        states,
+        recent_skills=recent_skills,
+        forced_skill=practice_state.get("forced_skill"),
     )
+    session["practice"] = practice_state
+    return redirect(url_for("ape.practice"))
+
+
+@bp.route("/practice/summary")
+def summary():
+    practice_state = session.get("practice") or {}
+    history = practice_state.get("history") or []
+    if not history:
+        return redirect(url_for("ape.dashboard"))
+
+    answered = int(practice_state.get("answered", len(history)))
+    correct = int(practice_state.get("correct", 0))
+    percent = round((correct / answered) * 100) if answered else 0
+    learner_id = _learner_id()
+    states = _store().get_all_states(learner_id)
+    cards = _skill_cards(states)
+    return render_template(
+        "summary.html",
+        history=history,
+        answered=answered,
+        correct=correct,
+        percent=percent,
+        cards=cards,
+        skills=SKILLS,
+    )
+
+
+@bp.route("/reset", methods=["POST"])
+def reset_progress():
+    store = _store()
+    session.clear()
+    learner_id = store.create_learner()
+    session["learner_id"] = learner_id
+    return redirect(url_for("ape.dashboard"))
