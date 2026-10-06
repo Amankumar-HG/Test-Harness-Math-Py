@@ -62,6 +62,13 @@ class TestMastery:
         assert updated["streak"] == 1
         assert updated["next_review_at"] > 1000.0
 
+    def test_incorrect_updates_next_review_at(self):
+        state = default_skill_state()
+        state["next_review_at"] = 1000.0
+        updated = update_after_attempt(state, correct=False, difficulty=2, now=1000.0)
+        assert updated["next_review_at"] <= 1000 + 3600.0  # Should be updated to 1 hour later
+        assert updated["next_review_at"] > 1000.0  # Should be greater than the current time
+
     def test_incorrect_resets_streak(self):
         state = default_skill_state()
         state["streak"] = 4
