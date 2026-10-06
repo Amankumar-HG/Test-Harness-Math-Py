@@ -59,7 +59,7 @@ def update_after_attempt(
         "streak": streak,
         "attempts": attempts,
         "correct_count": correct_count,
-        "next_review_at": next_review_at,
+        "next_review_at": now + 1 * 3600.0,  # Set to 1 hour after incorrect answer
         "last_seen_at": now,
     }
 
