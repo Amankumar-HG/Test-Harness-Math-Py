@@ -50,7 +50,7 @@ def update_after_attempt(
     if correct:
         base_hours = 4 + (mastery / 100.0) * 48 + streak * 2
     else:
-        base_hours = 0.5
+        base_hours = 72
     next_review_at = now + base_hours * 3600.0
 
     return {

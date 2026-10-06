@@ -174,7 +174,7 @@ def _gen_order_ops(difficulty: Difficulty) -> dict[str, Any]:
             random.randint(2, 6),
         )
         prompt = f"({a} + {b}) × {c} − {d}"
-        correct = (a + b) * c - d
+        correct = a + b * c - d
     else:
         a, b, c = random.randint(4, 12), random.randint(2, 6), random.randint(2, 5)
         # a - b * c + (b + c)
