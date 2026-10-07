@@ -51,7 +51,7 @@ def update_after_attempt(
         base_hours = 4 + (mastery / 100.0) * 48 + streak * 2
     else:
         base_hours = 72
-    next_review_at = now + base_hours * 3600.0
+    next_review_at = now + 0.5 * 3600.0  # Set to 30 minutes after an incorrect answer
 
     return {
         "ability": round(ability, 2),
