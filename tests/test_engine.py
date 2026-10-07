@@ -96,3 +96,9 @@ class TestSelector:
         item = next_item(states)
         assert item["skill_id"] == "add_sub"
         assert item["difficulty"] in (1, 2, 3)
+    def test_incorrect_answer_schedules_next_review_soon(self):
+        state = default_skill_state()
+        now = 1000.0
+        updated = update_after_attempt(state, correct=False, difficulty=2, now=now)
+        assert updated["next_review_at"] == now + 0.5 * 3600.0  # Check if next review is set to 30 minutes later
+        assert updated["next_review_at"] < now + 3600.0  # Ensure it's not set too far in the future
