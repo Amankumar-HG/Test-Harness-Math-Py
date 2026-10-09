@@ -185,7 +185,7 @@ def practice_answer():
     practice_state["current_item"] = next_item(
         states,
         recent_skills=recent_skills,
-        forced_skill=practice_state.get("forced_skill") or recent_skills[-1],
+        forced_skill=practice_state.get("forced_skill"),
     )
     session["practice"] = practice_state
     return redirect(url_for("ape.practice"))
