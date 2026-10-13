@@ -1,5 +1,6 @@
 """Unit tests for the Adaptive Problem Engine core."""
 
+import random
 from app.engine.items import generate_item, grade_item
 from app.engine.mastery import expected_success, update_after_attempt, default_skill_state
 from app.engine.selector import choose_skill, difficulty_for_ability, next_item
@@ -52,6 +53,22 @@ class TestItems:
             assert item["skill_id"] == skill_id
             assert "prompt" in item
             assert "correct" in item
+
+    def test_order_ops_medium_parentheses_honored(self, monkeypatch):
+        # Force a deterministic medium-difficulty order-of-operations item:
+        # (3 + 4) × 5 − 2
+        vals = iter([3, 4, 5, 2])
+
+        def fake_randint(_a, _b):
+            return next(vals)
+
+        monkeypatch.setattr(random, "randint", fake_randint)
+
+        item = generate_item("order_ops", 2)
+        assert item["prompt"] == "(3 + 4) × 5 − 2"
+        assert item["correct"] == (3 + 4) * 5 - 2
+        assert grade_item(item, (3 + 4) * 5 - 2) is True
+        assert grade_item(item, 3 + 4 * 5 - 2) is False
 
 
 class TestMastery:
