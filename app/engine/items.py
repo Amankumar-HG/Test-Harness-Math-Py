@@ -152,10 +152,9 @@ def _gen_fractions(difficulty: Difficulty) -> dict[str, Any]:
             "hint": "Find a common denominator first.",
         }
     num = a + b
-    g = _gcd(num, den)
     return {
         "prompt": f"{a}/{den} + {b}/{den} (answer as a/b)",
-        "correct": [num // g, den // g],
+        "correct": [num, den],
         "answer_type": "fraction",
         "hint": "Same denominator — add numerators, then simplify.",
     }
@@ -174,7 +173,7 @@ def _gen_order_ops(difficulty: Difficulty) -> dict[str, Any]:
             random.randint(2, 6),
         )
         prompt = f"({a} + {b}) × {c} − {d}"
-        correct = a + b * c - d
+        correct = (a + b) * c - d
     else:
         a, b, c = random.randint(4, 12), random.randint(2, 6), random.randint(2, 5)
         # a - b * c + (b + c)
