@@ -48,7 +48,20 @@ def grade_item(item: dict[str, Any], user_input: Any) -> bool:
     correct = item["correct"]
 
     if answer_type == "fraction":
-        return _parse_fraction(text) == tuple(correct)
+        parsed = _parse_fraction(text)
+        if parsed is None:
+            return False
+        # Normalize the expected answer too, since some generators may store
+        # an unsimplified numerator/denominator.
+        try:
+            exp_num, exp_den = int(correct[0]), int(correct[1])
+        except (TypeError, ValueError, IndexError):
+            return False
+        g = _gcd(abs(exp_num), abs(exp_den))
+        exp_num, exp_den = exp_num // g, exp_den // g
+        if exp_den < 0:
+            exp_num, exp_den = -exp_num, -exp_den
+        return parsed == (exp_num, exp_den)
 
     try:
         if answer_type == "float":
