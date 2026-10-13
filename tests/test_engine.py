@@ -46,6 +46,18 @@ class TestItems:
         assert grade_item(item, "2/4") is True
         assert grade_item(item, "1/3") is False
 
+    def test_fraction_add_same_denominator_medium_accepts_simplified_equivalent(self):
+        # Medium same-denominator addition may store an unsimplified correct answer (e.g., 2/4).
+        # Grading should accept any equivalent fraction, including simplified forms.
+        item = {
+            "prompt": "1/4 + 1/4 (answer as a/b)",
+            "correct": [2, 4],
+            "answer_type": "fraction",
+        }
+        assert grade_item(item, "2/4") is True
+        assert grade_item(item, "1/2") is True
+        assert grade_item(item, "3/4") is False
+
     def test_generate_all_skills(self):
         for skill_id in ("add_sub", "mul_div", "fractions", "order_ops", "linear_eq"):
             item = generate_item(skill_id, 2)
