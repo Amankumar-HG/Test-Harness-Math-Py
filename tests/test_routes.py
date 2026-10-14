@@ -5,6 +5,17 @@ import pytest
 from app import create_app
 
 
+def _extract_first_meter_fill_width(html: str) -> str:
+    marker = 'class="meter-fill" style="width: '
+    start = html.find(marker)
+    assert start != -1, "dashboard should render a meter-fill element"
+    start += len(marker)
+    end = html.find("%", start)
+    assert end != -1, "meter-fill width style should include a %"
+    # Normalise to the same format used by the mastery display (whole percent).
+    return str(int(round(float(html[start:end]))))
+
+
 @pytest.fixture
 def app(tmp_path):
     db = tmp_path / "test.sqlite3"
@@ -28,6 +39,18 @@ def test_dashboard_loads(client):
     response = client.get("/")
     assert response.status_code == 200
     assert b"Adaptive Problem Engine" in response.data
+
+
+def test_dashboard_meter_fill_matches_mastery_percentage(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+
+    # The dashboard shows a "Mastery" percentage text for each card, and the bar
+    # should fill proportionally left-to-right (not inverted as 100 - mastery).
+    assert "Mastery</dt><dd>" in html
+    width_value = _extract_first_meter_fill_width(html)
+    assert f"Mastery</dt><dd>{width_value}%" in html
     assert b"Addition" in response.data
 
 
