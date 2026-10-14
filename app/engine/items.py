@@ -152,9 +152,10 @@ def _gen_fractions(difficulty: Difficulty) -> dict[str, Any]:
             "hint": "Find a common denominator first.",
         }
     num = a + b
+    g = _gcd(num, den)
     return {
         "prompt": f"{a}/{den} + {b}/{den} (answer as a/b)",
-        "correct": [num, den],
+        "correct": [num // g, den // g],
         "answer_type": "fraction",
         "hint": "Same denominator — add numerators, then simplify.",
     }

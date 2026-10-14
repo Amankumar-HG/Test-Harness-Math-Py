@@ -33,7 +33,7 @@
     </header>
     <p>{{ card.skill.description }}</p>
     <div class="meter" aria-label="Mastery {{ card.state.mastery }}%">
-      <div class="meter-fill" style="width: {{ card.state.mastery }}%"></div>
+      <div class="meter-fill" style="width: {{ 100 - card.state.mastery }}%"></div>
     </div>
     <dl class="meta">
       <div><dt>Mastery</dt><dd>{{ '%.0f'|format(card.state.mastery) }}%</dd></div>
