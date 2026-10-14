@@ -31,6 +31,17 @@ def test_dashboard_loads(client):
     assert b"Addition" in response.data
 
 
+def test_dashboard_mastery_meter_fill_matches_percentage(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+
+    # Progress bar fill should match the displayed mastery percent text,
+    # not be inverted.
+    assert 'class="meter-fill" style="width: 80%' in html
+    assert 'class="meter-fill" style="width: 20%' not in html
+
+
 def test_start_practice_and_answer_flow(client, app):
     start = client.post("/practice/start", follow_redirects=False)
     assert start.status_code == 302
