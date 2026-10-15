@@ -1,6 +1,7 @@
 """Route tests for the Adaptive Problem Engine."""
 
 import pytest
+import re
 
 from app import create_app
 
@@ -29,6 +30,26 @@ def test_dashboard_loads(client):
     assert response.status_code == 200
     assert b"Adaptive Problem Engine" in response.data
     assert b"Addition" in response.data
+
+
+def test_dashboard_mastery_meter_fill_matches_percentage_text(client):
+    """Regression for THMP-34: meter fill width must not be inverted."""
+    response = client.get("/")
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+
+    # Each skill card renders:
+    #   <div class="meter" aria-label="Mastery X%">
+    #     <div class="meter-fill" style="width: Y%"></div>
+    # We assert X == Y for at least one card.
+    match = re.search(
+        r"aria-label=\"Mastery\s+(?P<mastery>\d+(?:\.\d+)?)%\"[^>]*>\s*"
+        r"<div class=\"meter-fill\" style=\"width:\s*(?P<width>\d+(?:\.\d+)?)%\"",
+        html,
+        re.MULTILINE,
+    )
+    assert match is not None, "Expected to find a meter with an aria-label and width style"
+    assert float(match.group("width")) == float(match.group("mastery"))
 
 
 def test_start_practice_and_answer_flow(client, app):
