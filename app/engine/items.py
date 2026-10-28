@@ -152,10 +152,9 @@ def _gen_fractions(difficulty: Difficulty) -> dict[str, Any]:
             "hint": "Find a common denominator first.",
         }
     num = a + b
-    g = _gcd(num, den)
     return {
         "prompt": f"{a}/{den} + {b}/{den} (answer as a/b)",
-        "correct": [num // g, den // g],
+        "correct": [num, den],
         "answer_type": "fraction",
         "hint": "Same denominator — add numerators, then simplify.",
     }
@@ -206,7 +205,7 @@ def _gen_linear_eq(difficulty: Difficulty) -> dict[str, Any]:
         b = a * x + c
         return {
             "prompt": f"{a}x + {c} = {b}. Find x",
-            "correct": b - c,
+            "correct": x,
             "answer_type": "int",
             "hint": "Subtract the constant, then divide.",
         }
