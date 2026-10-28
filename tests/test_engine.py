@@ -46,6 +46,16 @@ class TestItems:
         assert grade_item(item, "2/4") is True
         assert grade_item(item, "1/3") is False
 
+    def test_fraction_addition_accepts_simplified_equivalent(self):
+        # Regression test for THMP-38:
+        # medium fraction-addition items may store an unreduced correct fraction.
+        item = {
+            "prompt": "1/4 + 1/4",
+            "correct": [2, 4],  # unreduced
+            "answer_type": "fraction",
+        }
+        assert grade_item(item, "1/2") is True
+
     def test_generate_all_skills(self):
         for skill_id in ("add_sub", "mul_div", "fractions", "order_ops", "linear_eq"):
             item = generate_item(skill_id, 2)
