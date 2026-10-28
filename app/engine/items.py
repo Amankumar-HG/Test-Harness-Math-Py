@@ -48,7 +48,12 @@ def grade_item(item: dict[str, Any], user_input: Any) -> bool:
     correct = item["correct"]
 
     if answer_type == "fraction":
-        return _parse_fraction(text) == tuple(correct)
+        parsed = _parse_fraction(text)
+        if parsed is None:
+            return False
+        # Normalize the stored correct answer too (it may be unreduced, e.g. [2, 4]).
+        correct_parsed = _parse_fraction(f"{correct[0]}/{correct[1]}")
+        return parsed == correct_parsed
 
     try:
         if answer_type == "float":
