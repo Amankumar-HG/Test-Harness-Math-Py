@@ -83,9 +83,19 @@ def is_due(state: dict[str, Any], now: float | None = None) -> bool:
 
 def mastery_label(mastery: float) -> str:
     if mastery < 25:
-        return "Novice"
+        return "Getting started"
     if mastery < 50:
-        return "Developing"
+        return "Building skill"
     if mastery < 75:
         return "Proficient"
     return "Mastered"
+
+
+def mastery_level_key(mastery: float) -> str:
+    if mastery < 25:
+        return "started"
+    if mastery < 50:
+        return "building"
+    if mastery < 75:
+        return "proficient"
+    return "mastered"

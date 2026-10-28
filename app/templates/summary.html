@@ -2,26 +2,29 @@
 {% block title %}Session summary{% endblock %}
 {% block content %}
 <section class="summary">
+  <p class="eyebrow">Session recap</p>
   <h1>Session complete</h1>
   <p class="score-line">
-    You got <strong>{{ correct }}</strong> of <strong>{{ answered }}</strong>
+    You answered <strong>{{ correct }}</strong> of <strong>{{ answered }}</strong> correctly
     ({{ percent }}%).
   </p>
 
+  <h2 class="section-title">Question review</h2>
   <ul class="review">
     {% for item in history %}
     <li class="{{ 'correct' if item.is_correct else 'incorrect' }}">
       <span class="q">{{ item.prompt }}</span>
       <span class="a">
-        You: {{ item.user_answer or 'blank' }}
-        · Correct:
+        Your answer: {{ item.user_answer or 'blank' }}
+        · Correct answer:
         {% if item.answer_type == 'fraction' %}
           {{ item.correct_answer[0] }}/{{ item.correct_answer[1] }}
         {% else %}
           {{ item.correct_answer }}
         {% endif %}
         · {{ skills[item.skill_id].name }}
-        · mastery now {{ '%.0f'|format(item.mastery_after) }}%
+        · {{ difficulty_labels.get(item.difficulty, item.difficulty) }}
+        · Mastery now {{ '%.0f'|format(item.mastery_after) }}%
       </span>
     </li>
     {% endfor %}
@@ -31,15 +34,21 @@
     <form action="{{ url_for('ape.start_practice') }}" method="post">
       <button class="btn primary" type="submit">Practice again</button>
     </form>
-    <a class="btn ghost" href="{{ url_for('ape.dashboard') }}">Back to dashboard</a>
+    <a class="btn ghost" href="{{ url_for('ape.dashboard') }}">Back to home</a>
   </div>
 
+  <h2 class="section-title">Updated skill levels</h2>
   <section class="skill-grid compact">
     {% for card in cards %}
     <article class="skill-card {% if not card.unlocked %}locked{% endif %}">
-      <h2>{{ card.skill.name }}</h2>
-      <div class="meter"><div class="meter-fill" style="width: {{ card.state.mastery }}%"></div></div>
-      <p>{{ '%.0f'|format(card.state.mastery) }}% · {{ card.label }}</p>
+      <header>
+        <h3>{{ card.skill.name }}</h3>
+        <span class="badge {{ card.level_key }}">{{ card.label }}</span>
+      </header>
+      <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ '%.0f'|format(card.state.mastery) }}">
+        <div class="meter-fill" style="width: {{ card.state.mastery }}%"></div>
+      </div>
+      <p>{{ '%.0f'|format(card.state.mastery) }}% mastery</p>
     </article>
     {% endfor %}
   </section>

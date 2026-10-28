@@ -1,68 +1,77 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — Adaptive Problem Engine{% endblock %}
+{% block title %}Home — Adaptive Problem Engine{% endblock %}
 {% block content %}
 <section class="hero">
   <div>
-    <h1>Your math path</h1>
+    <p class="eyebrow">Practice path</p>
+    <h1>Your progress</h1>
     <p class="lede">
-      Skills unlock as you improve. Each practice session adapts difficulty and
-      spaced review to your mastery.
+      Practice adapts to how you are doing. New skills unlock as you improve,
+      and due reviews come back when it is time to refresh.
     </p>
   </div>
   <div class="overall">
     <span class="overall-label">Overall mastery</span>
     <strong>{{ overall }}%</strong>
+    <span class="overall-hint">Average across all skills</span>
   </div>
 </section>
 
 <section class="actions">
   <form action="{{ url_for('ape.start_practice') }}" method="post">
-    <button class="btn primary" type="submit">Start adaptive session ({{ session_length }})</button>
+    <button class="btn primary" type="submit">Start practice ({{ session_length }} questions)</button>
   </form>
-  <form action="{{ url_for('ape.reset_progress') }}" method="post" onsubmit="return confirm('Reset all progress?');">
+  <form action="{{ url_for('ape.reset_progress') }}" method="post" onsubmit="return confirm('Reset all progress? This cannot be undone.');">
     <button class="btn ghost" type="submit">Reset progress</button>
   </form>
 </section>
 
-<section class="skill-grid">
-  {% for card in cards %}
-  <article class="skill-card {% if not card.unlocked %}locked{% endif %} {% if card.due %}due{% endif %}">
-    <header>
-      <h2>{{ card.skill.name }}</h2>
-      <span class="badge">{{ card.label }}</span>
-    </header>
-    <p>{{ card.skill.description }}</p>
-    <div class="meter" aria-label="Mastery {{ card.state.mastery }}%">
-      <div class="meter-fill" style="width: {{ 100 - card.state.mastery }}%"></div>
-    </div>
-    <dl class="meta">
-      <div><dt>Mastery</dt><dd>{{ '%.0f'|format(card.state.mastery) }}%</dd></div>
-      <div><dt>Ability</dt><dd>{{ '%.0f'|format(card.state.ability) }}</dd></div>
-      <div><dt>Streak</dt><dd>{{ card.state.streak }}</dd></div>
-      <div><dt>Attempts</dt><dd>{{ card.state.attempts }}</dd></div>
-    </dl>
-    {% if card.unlocked %}
-    <form action="{{ url_for('ape.start_practice') }}" method="post">
-      <input type="hidden" name="skill_id" value="{{ card.skill.id }}">
-      <button class="btn secondary" type="submit">
-        {% if card.due %}Review due{% else %}Practice focus{% endif %}
-      </button>
-    </form>
-    {% else %}
-    <p class="lock-note">Locked — raise prerequisites to {{ '%.0f'|format(card.skill.unlock_mastery) }}% mastery.</p>
-    {% endif %}
-  </article>
-  {% endfor %}
+<section>
+  <h2 class="section-title">Skills</h2>
+  <section class="skill-grid">
+    {% for card in cards %}
+    <article class="skill-card {% if not card.unlocked %}locked{% endif %} {% if card.due %}due{% endif %}">
+      <header>
+        <h3>{{ card.skill.name }}</h3>
+        <span class="badge {{ card.level_key }}">{{ card.label }}</span>
+      </header>
+      <p>{{ card.skill.description }}</p>
+      <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ '%.0f'|format(card.state.mastery) }}" aria-label="Mastery {{ '%.0f'|format(card.state.mastery) }} percent">
+        <div class="meter-fill" style="width: {{ card.state.mastery }}%"></div>
+      </div>
+      <dl class="meta">
+        <div><dt>Mastery</dt><dd>{{ '%.0f'|format(card.state.mastery) }}%</dd></div>
+        <div><dt>Skill rating</dt><dd>{{ '%.0f'|format(card.state.ability) }}</dd></div>
+        <div><dt>Correct streak</dt><dd>{{ card.state.streak }}</dd></div>
+        <div><dt>Questions tried</dt><dd>{{ card.state.attempts }}</dd></div>
+      </dl>
+      {% if card.unlocked %}
+      <form action="{{ url_for('ape.start_practice') }}" method="post">
+        <input type="hidden" name="skill_id" value="{{ card.skill.id }}">
+        <button class="btn secondary" type="submit">
+          {% if card.due %}Review now{% else %}Practice this skill{% endif %}
+        </button>
+      </form>
+      {% else %}
+      <p class="lock-note">
+        Locked until {{ card.prereq_names | join(' and ') }}
+        {% if card.prereq_names|length == 1 %}reaches{% else %}reach{% endif %}
+        {{ '%.0f'|format(card.skill.unlock_mastery) }}% mastery.
+      </p>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
 </section>
 
 {% if recent %}
 <section class="recent">
-  <h2>Recent attempts</h2>
+  <h2 class="section-title">Recent practice</h2>
   <ul>
     {% for row in recent %}
     <li class="{{ 'ok' if row.correct else 'bad' }}">
       <span>{{ row.prompt }}</span>
-      <span>{{ skills[row.skill_id].name }} · d{{ row.difficulty }}</span>
+      <span>{{ skills[row.skill_id].name }} · {{ difficulty_labels.get(row.difficulty, row.difficulty) }}</span>
     </li>
     {% endfor %}
   </ul>

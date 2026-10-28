@@ -15,9 +15,16 @@ from flask import (
 )
 
 from app.engine.items import grade_item
-from app.engine.mastery import is_due, mastery_label, update_after_attempt
+from app.engine.mastery import (
+    is_due,
+    mastery_label,
+    mastery_level_key,
+    update_after_attempt,
+)
 from app.engine.selector import next_item
 from app.engine.skills import SKILLS, is_unlocked, skill_order
+
+DIFFICULTY_LABELS = {1: "Easy", 2: "Medium", 3: "Hard"}
 
 bp = Blueprint("ape", __name__)
 
@@ -39,13 +46,16 @@ def _skill_cards(states: dict) -> list[dict]:
     for skill in skill_order():
         state = states[skill.id]
         unlocked = is_unlocked(skill.id, mastery_map)
+        mastery = float(state["mastery"])
         cards.append(
             {
                 "skill": skill,
                 "state": state,
                 "unlocked": unlocked,
                 "due": unlocked and is_due(state),
-                "label": mastery_label(float(state["mastery"])),
+                "label": mastery_label(mastery),
+                "level_key": mastery_level_key(mastery),
+                "prereq_names": [SKILLS[pid].name for pid in skill.prerequisites],
             }
         )
     return cards
@@ -68,6 +78,7 @@ def dashboard():
         overall=overall,
         session_length=current_app.config["SESSION_LENGTH"],
         skills=SKILLS,
+        difficulty_labels=DIFFICULTY_LABELS,
     )
 
 
@@ -114,6 +125,7 @@ def practice():
         progress=practice_state["answered"] + 1,
         total=practice_state["target"],
         correct_so_far=practice_state["correct"],
+        difficulty_label=DIFFICULTY_LABELS.get(int(item["difficulty"]), "Medium"),
     )
 
 
@@ -212,6 +224,7 @@ def summary():
         percent=percent,
         cards=cards,
         skills=SKILLS,
+        difficulty_labels=DIFFICULTY_LABELS,
     )
 
 
