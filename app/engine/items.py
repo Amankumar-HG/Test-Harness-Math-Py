@@ -206,7 +206,7 @@ def _gen_linear_eq(difficulty: Difficulty) -> dict[str, Any]:
         b = a * x + c
         return {
             "prompt": f"{a}x + {c} = {b}. Find x",
-            "correct": x,
+            "correct": b - c,
             "answer_type": "int",
             "hint": "Subtract the constant, then divide.",
         }
